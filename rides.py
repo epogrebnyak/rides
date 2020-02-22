@@ -72,7 +72,7 @@ class Vehicles:
         if not os.path.exists(csv_path):
             self.dataframe().to_csv(csv_path)
         else:
-            LocalFile(csv_path).warn_file_exists()
+            warn_file_exists(csv_path)
 
     @classmethod
     def read(cls, csv_path):
@@ -184,7 +184,7 @@ class Points:
             df = self.dataframe_with_distances()
             df.to_csv(csv_path, index=False)
         else:
-            LocalFile(csv_path).warn_file_exists()
+            warn_file_exists(csv_path)
 
     @classmethod
     @timing
@@ -238,12 +238,8 @@ def to_canonic(raw_df, vehicles_df):
     return df
 
 
-@dataclass
-class LocalFile:
-    path: str
-
-    def warn_file_exists(self):
-        print(f"File {self.path} already exists.")
+def warn_file_exists(path):
+    print(f"File {path} already exists.")
 
 
 @timing
@@ -258,29 +254,60 @@ def get_dataframe_from_jsons(source_folder: str, nrows: Optional[int] = None):
     return to_canonic(raw_df)
 
 
+def join(filename: str, folder: str):
+    folder = Path(folder)
+    folder.mkdir(parents=False, exist_ok=True)
+    return str(folder / filename)
+
+
 @dataclass
 class Dataset:
-    directory: str
-    csv_vehicles: str
-    csv_tracks: str
+    raw_data_dir: str
+    cache_dir: str
+
+    def _cached(self, filename: str):
+        return join(filename, self.cache_dir)
 
     @property
-    def folder(self):
-        return Folder(self.directory)
+    def _csv_vehicles(self):
+        return self._cached("vehicles.csv")
 
-    def prepare_vehicle_info(self, force=False):
-        if force:
-            os.unlink(self.csv_vehicles)
-        Vehicles(self.directory).to_csv(self.csv_vehicles)
+    @property
+    def _csv_tracks(self):
+        return self._cached("source.csv")
 
-    def prepare_tracks_info(self, force=False):
+    def build(self, force=False):
+        self._prepare_vehicles(force)
+        self._prepare_tracks(force)
+
+    def _prepare_vehicles(self, force=False):
         if force:
-            os.unlink(self.csv_tracks)
-        Points(self.directory).to_csv(self.csv_tracks)
+            os.unlink(self._csv_vehicles)
+        Vehicles(self.raw_data_dir).to_csv(self._csv_vehicles)
+
+    def _prepare_tracks(self, force=False):
+        if force:
+            os.unlink(self._csv_tracks)
+        Points(self.raw_data_dir).to_csv(self._csv_tracks)
+
+    @property
+    def _folder(self):
+        return Folder(self.raw_data_dir)
+
+    def vehicle_summary(self):
+        return Vehicles.read(self._csv_vehicles)
+
+    def vehicle_types(self):
+        return self.vehicle_summary().type.unique().tolist()
+
+    def raw_dataframe(self, nrows: Optional[int] = None):
+        return Points.read(self._csv_tracks, nrows)
 
     @timing
-    def full_dataframe(self, nrows: Optional[int] = None):
-        self.vs = Vehicles(self.directory)
-        vehicle_df = Vehicles.read(self.csv_vehicles)
-        raw_df = Points.read(self.csv_tracks)
+    def get_dataframe(self, nrows: Optional[int] = None):
+        vehicle_df = self.vehicle_summary()
+        raw_df = self.raw_dataframe(nrows)
         return to_canonic(raw_df, vehicle_df)
+
+
+

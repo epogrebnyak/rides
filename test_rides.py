@@ -4,8 +4,10 @@ from rides import Dataset
 
 
 def test_rides():
-    d = Dataset("sample_jsons", "vehicles.csv", "df.csv")
-    d.prepare_vehicle_info()
-    d.prepare_tracks_info()
-    df = d.full_dataframe()
-    assert df.shape == (5174, 9)
+    d = Dataset("sample_jsons", "temp")
+    d.build()
+    types = d.vehicle_types()
+    assert types == ["bus", "freight"]
+    df = d.get_dataframe(10)
+    assert df.shape == (10, 9)
+    #assert df.shape == (5174, 9)
