@@ -1,0 +1,70 @@
+# Ссылка URL c данными и имя файла с данными
+RAW_DATA_URL = ("https://dl.dropboxusercontent.com" 
+                "/sh/hibzl6fkzukltk9/AABTFmhvDvxyQdUaBsKl4h59a/data_samples_json.zip")
+
+# Удалять ли все промежуточные файлы в начале запуска.
+# Oбычно False, но для глубокого перезапуска - True
+ERASE_EVERYTHING_AT_START = False
+
+# Каталог для данных
+DATADIR = Path("data")  
+DATADIR.mkdir(parents=False, exist_ok=True)
+
+def datafile(filename):
+    return str(DATADIR / filename)
+
+class Filename:  
+    VEHICLES = datafile("vehicles.csv")
+    CSV_SOURCE = datafile("source.csv")  
+    RAW_JSON_FOLDER = str (DATADIR / "jsons")
+    RAW_ZIP_FILE = datafile("jsons.zip")
+
+# Удалить все локальные файлы?
+if ERASE_EVERYTHING_AT_START:
+   !rm {Filename.RAW_ZIP_FILE}
+   !rm -rf {Filename.RAW_JSON_FOLDER}
+   !rm {Filename.VEHICLES}
+   !rm {Filename.CSV_SOURCE}
+
+# Загружаем файлы, если их нет
+if not os.path.exists(Filename.RAW_ZIP_FILE):
+  !wget -O {Filename.RAW_ZIP_FILE} {RAW_DATA_URL}
+  !mkdir {Filename.RAW_JSON_FOLDER}
+  !unzip -o {Filename.RAW_ZIP_FILE}  -d {Filename.RAW_JSON_FOLDER} > /dev/null 
+
+# проверим наличие файлов 
+!echo Raw file count:
+!find {Filename.RAW_JSON_FOLDER} -type f | wc -l
+!echo Sample files:
+!ls {Filename.RAW_JSON_FOLDER} | head
+
+
+
+class City:
+    Gvardeisk = (54 + 39 / 60, 21 + 4 / 60)  # Ориентир для центирования карты
+    Kaliningrad = (54 + 43 / 60, 20 + 30 / 60)
+
+
+make_raw_csv(force=ERASE_EVERYTHING_AT_START)
+try:
+  df_full  
+except NameError:  
+  df_full = get_dataframe_from_raw_csv()
+df_full.head()
+
+df_full.describe()
+
+
+VEHICLES = get_vehicle_dataframe()
+VEHICLE_TYPES = VEHICLES.type.unique().tolist()
+assert set(VEHICLE_TYPES) == set(['bus', 'freight', 'passenger', 'special'])
+
+
+def make_raw_csv(force=False):
+    """Переписать треки из файлов JSON в CSV файл.
+    Примерное время исполнения: от 5-6 минут.
+    """
+    RawDataFrame().to_csv(force)
+
+
+
