@@ -179,6 +179,7 @@ class Points:
         gen = add_distance(gen)
         return pd.DataFrame(gen)
 
+    @timing
     def to_csv(self, csv_path) -> None:
         if not os.path.exists(csv_path):
             df = self.dataframe_with_distances()
@@ -308,6 +309,3 @@ class Dataset:
         vehicle_df = self.vehicle_summary()
         raw_df = self.raw_dataframe(nrows)
         return to_canonic(raw_df, vehicle_df)
-
-
-
