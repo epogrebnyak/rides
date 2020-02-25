@@ -308,6 +308,3 @@ class Dataset:
         vehicle_df = self.vehicle_summary()
         raw_df = self.raw_dataframe(nrows)
         return to_canonic(raw_df, vehicle_df)
-
-
-
