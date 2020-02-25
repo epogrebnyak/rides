@@ -1,13 +1,13 @@
+import os
 from pathlib import Path
+from dataclasses import dataclass
+
 import requests
 from tqdm import tqdm
-import os
 
 from rides import Dataset
 
-URL = "https://github.com/epogrebnyak/rides/raw/master/sample_jsons/jsons.zip"
-
-
+# warning: has problems with https on Windows
 def curl(path: str, url: str, stop_at=None):
     r = requests.get(url, stream=True)
     iterable = tqdm(r.iter_content(chunk_size=1024), unit=" k")
@@ -29,27 +29,30 @@ def datafile(filename):
     return str(DATADIR / filename)
 
 
+@dataclass
 class Files:
-    RAW_ZIP_FILE = datafile("jsons.zip")
-    RAW_JSON_FOLDER = str(DATADIR / "jsons")
-    TEMP_FOLDER = "temp"
+    RAW_ZIP_FILE: str = datafile("jsons.zip")
+    RAW_JSON_FOLDER: str = str(DATADIR / "jsons")
+    TEMP_FOLDER: str = "temp"
 
-    def __init__(self, url):
-        self.url = url
+
+class Getter:
+    URL: str
+    files: Files = Files()
 
     def download(self):
-        if not os.path.exists(self.RAW_ZIP_FILE):
-            curl(self.RAW_ZIP_FILE, self.url)
+        if not os.path.exists(self.files.RAW_ZIP_FILE):
+            curl(self.URL, self.files.RAW_ZIP_FILE)
 
     def unzip(self):
         import zipfile
 
-        with zipfile.ZipFile(self.RAW_ZIP_FILE, "r") as zip_ref:
-            zip_ref.extractall(self.RAW_JSON_FOLDER)
+        with zipfile.ZipFile(self.files.RAW_ZIP_FILE, "r") as zip_ref:
+            zip_ref.extractall(self.files.RAW_JSON_FOLDER)
 
     @property
     def dataset(self):
-        return Dataset(self.RAW_JSON_FOLDER, self.TEMP_FOLDER)
+        return Dataset(self.files.RAW_JSON_FOLDER, self.files.TEMP_FOLDER)
 
     def build(self):
         self.dataset.build()
